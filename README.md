@@ -10,7 +10,12 @@ Copy the data to be transformed to the "data" folder. Sample data is included in
 
 Once all the files have been copied, enter "docker-compose up" to run the tool. 
 
-This will produce an output.jl file with the required json lines file. 
+this will open a simple webserver that does two things: 
+
+on http://localhost:5000/generate_file/ this builds the json lines file and tells you what's in it
+
+on http://localhost:5000/get_jl/ this will download the file as output.jl
+
 
 
 
