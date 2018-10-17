@@ -1,37 +1,54 @@
 import base64, zlib, os, json, uuid
+from flask import Flask, current_app, send_from_directory
 
+app = Flask(__name__)
 
-if __name__ == "__main__":
-    output_file = "output.jl"
-    if os.path.exists(output_file):
-        append_write = 'a'
-        print("File exists, appending records to file...")
-    else:
-        append_write = 'w'
-        print("File doesn't exist, creating new file " + output_file + "...")
-    file_count = 0
-    line_count = 0
-    with open(output_file, append_write) as out:   
-        for compressedfilepath in os.listdir("data/"):
-            file_count+=1
-            with open("data/" + compressedfilepath, "rb") as f:
-                decompressed = zlib.decompress(f.read())
-                decompressed_and_decoded = decompressed.decode('utf8')             
-                json_list = decompressed_and_decoded.replace("'", '"').splitlines()
-                for line in json_list:
-                    line_json = json.loads(line)
-                    try:
-                        line_json['content'] = base64.b64decode(line_json['content']).decode('utf8') 
-                        line_json['raw_content'] = line_json['content']
-                        line_json['doc_id'] = str(uuid.uuid4())
-                        del line_json['content']
-                        print(type(line_json['raw_content']))
-                        out_line = json.dumps(line_json)
-                        out.write(out_line + '\n')
-                        line_count+=1
-                    except:
-                        print("Failed")
-                        pass
-    print("Read " + str(file_count) + " compressed files and retrieved " + str(line_count) + " pages to json lines file.")
+@app.route('/generate_file')
+def create_file():
+    try: 
+        if os.path.exists("output/output.jl"):
+            os.remove("output/output.jl")
+        output_file = "output.jl"
+        if os.path.exists(output_file):
+            append_write = 'a'
+            print("File exists, appending records to file...")
+        else:
+            append_write = 'w'
+            print("File doesn't exist, creating new file " + output_file + "...")
+        file_count = 0
+        line_count = 0
+        with open("output/" + output_file, append_write) as out:   
+            for compressedfilepath in os.listdir("data/"):
+                file_count+=1
+                with open("data/" + compressedfilepath, "rb") as f:
+                    decompressed = zlib.decompress(f.read())
+                    decompressed_and_decoded = decompressed.decode('utf8')             
+                    json_list = decompressed_and_decoded.replace("'", '"').splitlines()
+                    for line in json_list:
+                        line_json = json.loads(line)
+                        try:
+                            line_json['content'] = base64.b64decode(line_json['content']).decode('utf8') 
+                            line_json['raw_content'] = line_json['content']
+                            line_json['doc_id'] = str(uuid.uuid4())
+                            del line_json['content']
+                            print(type(line_json['raw_content']))
+                            out_line = json.dumps(line_json)
+                            out.write(out_line + '\n')
+                            line_count+=1
+                        except:
+                            print("Failed")
+                            pass
+        print("Read " + str(file_count) + " compressed files and retrieved " + str(line_count) + " pages to json lines file.")
+        return '<h1>Read ' + str(file_count) + ' compressed files and retrieved ' + str(line_count) + ' pages to json lines file.</h1>'
+    except: 
+        return '<h1>There was an error generating your file</h1>'        
 
+@app.route('/get_jl/', methods=['GET', 'POST'])
+def download():
+    try:
+        return send_from_directory(directory="output/", filename="output.jl", as_attachment=True, attachment_filename="output.jl")
+    except: 
+        return '<h1>Be sure you created the file using /generate_file.</h1>'
 
+if __name__ == '__main__':
+    app.run(host= '0.0.0.0', debug=True)
